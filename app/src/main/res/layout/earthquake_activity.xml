@@ -39,4 +39,12 @@
         android:gravity="center"
         android:textSize="24sp" />
 
+    <TextView
+        android:id="@+id/noE"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_margin="36dp"
+        android:gravity="center"
+        android:textSize="24sp" />
+
 </RelativeLayout>

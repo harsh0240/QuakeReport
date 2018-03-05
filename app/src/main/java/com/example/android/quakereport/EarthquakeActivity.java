@@ -18,21 +18,20 @@ package com.example.android.quakereport;
 import android.content.AsyncTaskLoader;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Bundle;
-import android.support.v4.app.LoaderManager;
-import android.support.v4.content.Loader;
+import android.preference.PreferenceManager;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.ProgressBar;
-import android.widget.ScrollView;
 import android.widget.TextView;
 
 import org.json.JSONArray;
@@ -53,7 +52,7 @@ public class EarthquakeActivity extends AppCompatActivity implements android.app
 
     public static final String LOG_TAG = EarthquakeActivity.class.getName();
     private String HTTPurl =
-            "https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&eventtype=earthquake&orderby=time&limit=10&minmagnitude=6";
+            "https://earthquake.usgs.gov/fdsnws/event/1/query";
     private static String HTTPurlin =
             "https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=2018-01-01&minlatitude=6.75&maxlatitude=37.1&minlongitude=68.1&maxlongitude=97.4";
 
@@ -87,6 +86,13 @@ public class EarthquakeActivity extends AppCompatActivity implements android.app
         try{
             JSONObject root = new JSONObject(JSONstr);
             JSONArray features = root.getJSONArray("features");
+
+            if(features.length() == 0)
+            {
+                TextView textView = (TextView) findViewById(R.id.noE);
+                textView.setText("No Earthquakes found for current Preferences.");
+                textView.setVisibility(View.VISIBLE);
+            }
 
             for(int i = 0; i < features.length(); i++)
             {
@@ -135,9 +141,50 @@ public class EarthquakeActivity extends AppCompatActivity implements android.app
     }
 
     @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.main, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        int id = item.getItemId();
+        if (id == R.id.action_settings) {
+            Intent settingsIntent = new Intent(this, SettingsActivity.class);
+            startActivity(settingsIntent);
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    @Override
     public android.content.Loader<String> onCreateLoader(int id, Bundle args) {
         Log.i("Out","yes");
-        return new EarthquakeLoader(EarthquakeActivity.this,HTTPurl);
+
+        SharedPreferences sharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
+        String minMagnitude = sharedPrefs.getString(
+                getString(R.string.settings_min_magnitude_key),
+                getString(R.string.settings_min_magnitude_default));
+        String orderBy = sharedPrefs.getString(
+                getString(R.string.settings_order_by_key),
+                getString(R.string.settings_order_by_default));
+        String limit = sharedPrefs.getString(
+                getString(R.string.settings_limit_key),
+                getString(R.string.settings_limit_default));
+        String startTime = sharedPrefs.getString(
+                getString(R.string.settings_start_time_key),
+                getString(R.string.settings_start_time_default));
+
+        Uri baseUri = Uri.parse(HTTPurl);
+        Uri.Builder uriBuilder = baseUri.buildUpon();
+
+        uriBuilder.appendQueryParameter("format", "geojson");
+        uriBuilder.appendQueryParameter("limit", limit);
+        uriBuilder.appendQueryParameter("minmag", minMagnitude);
+        uriBuilder.appendQueryParameter("orderby", orderBy);
+        uriBuilder.appendQueryParameter("starttime", startTime);
+
+        return new EarthquakeLoader(EarthquakeActivity.this,uriBuilder.toString());
     }
 
     @Override
@@ -172,6 +219,8 @@ public class EarthquakeActivity extends AppCompatActivity implements android.app
 
         @Override
         public String loadInBackground() {
+
+            Log.i("URL",URL);
 
             if(URL == null)
                 return null;
